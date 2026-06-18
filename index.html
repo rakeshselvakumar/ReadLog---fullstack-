@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReadLog</title>
+    <link rel="stylesheet" href="style.css" />
+   
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+
+  <body>
+
+    <header class="topbar">
+  <div class="logo">📚 ReadLog</div>
+  <div class="topbar-actions">
+    <span class="user-greeting" id="userGreeting"></span>
+    <button class="icon-btn" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
+    <button class="add-btn" onclick="openModal()">+ Add Book</button>
+    <button class="logout-btn" onclick="logout()" title="Logout">🚪</button>
+  </div>
+</header>
+
+    <!-- SEARCH & SORT BAR -->
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search books..." />
+      <select id="sortSelect" onchange="renderBooks()">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="title">Title A–Z</option>
+        <option value="rating">Rating ↓</option>
+      </select>
+    </div>
+
+    <!-- FILTER TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="filterBooks('all', event)">All</button>
+      <button class="tab" onclick="filterBooks('reading', event)">📖 Reading</button>
+      <button class="tab" onclick="filterBooks('read', event)">✅ Read</button>
+      <button class="tab" onclick="filterBooks('want', event)">📋 Want to Read</button>
+      <button class="tab" onclick="filterBooks('favourite', event)">⭐ Favourites</button>
+      <button class="tab" onclick="filterBooks('stats', event)">📊 Stats</button>
+      <button class="tab" onclick="filterBooks('recommend', event)">🔮 For You</button>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num" id="totalCount">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="readingCount">0</div>
+        <div class="stat-label">Reading</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="readCount">0</div>
+        <div class="stat-label">Read</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="wantCount">0</div>
+        <div class="stat-label">Wishlist</div>
+      </div>
+    </div>
+
+    <!-- YEARLY READING GOAL -->
+    <div class="goal-section" id="goalSection">
+      <div class="goal-header">
+        <span>📅 <strong>Reading Goal 2026</strong></span>
+        <button class="goal-edit-btn" onclick="editGoal()">Edit goal</button>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="goalBar" style="width:0%"></div>
+      </div>
+      <div class="progress-text">
+        <span id="goalText">0 of 0 books read this year</span>
+        <span id="goalPercent">0%</span>
+      </div>
+    </div>
+
+    <!-- BOOK LIST -->
+    <div class="book-list" id="bookList"></div>
+
+    <!-- STATS PAGE -->
+    <div class="stats-page" id="statsPage" style="display:none;">
+      <div class="chart-card">
+        <h3>Books by Status</h3>
+        <canvas id="statusChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Books by Genre</h3>
+        <canvas id="genreChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Average Rating</h3>
+        <div class="avg-rating" id="avgRating">–</div>
+        <div class="avg-label">out of 5 stars</div>
+      </div>
+    </div>
+
+    <!-- RECOMMENDATIONS PAGE -->
+<div class="recommend-page" id="recommendPage" style="display:none;">
+
+  <!-- Your taste summary -->
+  <div class="taste-card" id="tasteCard">
+    <div class="taste-title">📊 Your Reading Taste</div>
+    <div class="taste-row" id="tasteRow"></div>
+  </div>
+
+  <!-- Genre based -->
+  <div class="rec-section" id="recGenreSection">
+    <div class="rec-section-title">🎯 Based on your favourite genres</div>
+    <div class="rec-grid" id="recGenreGrid"></div>
+  </div>
+
+  <!-- Author based -->
+  <div class="rec-section" id="recAuthorSection">
+    <div class="rec-section-title">✍️ More from authors you love</div>
+    <div class="rec-grid" id="recAuthorGrid"></div>
+  </div>
+
+  <!-- Top rated based -->
+  <div class="rec-section" id="recRatingSection">
+    <div class="rec-section-title">⭐ Because you loved these books</div>
+    <div class="rec-grid" id="recRatingGrid"></div>
+  </div>
+
+</div>
+
+    <!-- EXPORT BUTTONS -->
+    <div class="export-row" id="exportRow">
+      <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="export-btn" onclick="exportPDF()">⬇ Export PDF</button>
+    </div>
+
+    <!-- ADD / EDIT BOOK MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h2 id="modalTitle">Add New Book</h2>
+
+        <input type="text" id="bookTitle" placeholder="Book title" />
+        <input type="text" id="bookAuthor" placeholder="Author name" />
+        <input type="text" id="bookGenre" placeholder="Genre (e.g. Fiction, Self-help)" />
+
+        <!-- Book cover search -->
+        <div class="cover-row">
+  <button class="cover-search-btn" onclick="fetchCover()">🔍 Fetch Cover</button>
+  <label class="upload-cover-btn">
+    📁 Upload Image
+    <input type="file" id="coverUpload" accept="image/*" onchange="handleCoverUpload(event)" style="display:none;" />
+  </label>
+  <span id="coverStatus" style="font-size:12px; color:#888;"></span>
+</div>
+<img id="coverPreview" src="" alt="Cover" style="display:none; width:80px; border-radius:6px; margin-top:4px;" />
+<button id="removeCoverBtn" onclick="removeCover()" style="display:none; background:none; border:none; color:#e74c3c; font-size:12px; cursor:pointer; margin-top:4px;">✕ Remove cover</button>
+<input type="hidden" id="bookCover" />
+        <select id="bookStatus">
+          <option value="reading">📖 Currently Reading</option>
+          <option value="read">✅ Read</option>
+          <option value="want">📋 Want to Read</option>
+          <option value="favourite">⭐ Favourite</option>
+        </select>
+
+        <div id="progressSection" style="display:none; flex-direction:column; gap:8px;">
+          <input type="number" id="currentPage" placeholder="Current page" min="0" />
+          <input type="number" id="totalPages" placeholder="Total pages" min="1" />
+        </div>
+
+       <div id="ratingSection" style="display:none; flex-direction:column; gap:10px;">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <label>Rating:</label>
+    <select id="bookRating">
+      <option value="5">★★★★★</option>
+      <option value="4">★★★★☆</option>
+      <option value="3">★★★☆☆</option>
+      <option value="2">★★☆☆☆</option>
+      <option value="1">★☆☆☆☆</option>
+    </select>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <label style="white-space:nowrap;">📅 Date read:</label>
+    <select id="readMonth">
+      <option value="">Month</option>
+      <option value="1">January</option>
+      <option value="2">February</option>
+      <option value="3">March</option>
+      <option value="4">April</option>
+      <option value="5">May</option>
+      <option value="6">June</option>
+      <option value="7">July</option>
+      <option value="8">August</option>
+      <option value="9">September</option>
+      <option value="10">October</option>
+      <option value="11">November</option>
+      <option value="12">December</option>
+    </select>
+    <select id="readYear">
+      <option value="">Year</option>
+    </select>
+  </div>
+</div>
+
+        <textarea id="bookNotes" placeholder="Notes or review (optional)..." rows="3"></textarea>
+
+        <div class="modal-buttons">
+          <button onclick="saveBook()">Save Book</button>
+          <button onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

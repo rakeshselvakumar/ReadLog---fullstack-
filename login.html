@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReadLog — Sign in</title>
+  <link rel="stylesheet" href="login.css" />
+</head>
+
+<body>
+
+  <!-- BACKGROUND BLOBS (decorative) -->
+  <div class="bg-blob blob1"></div>
+  <div class="bg-blob blob2"></div>
+
+  <!-- DARK MODE TOGGLE -->
+  <button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
+
+  <!-- MAIN CARD -->
+  <div class="login-wrapper">
+
+    <!-- HEADER -->
+    <div class="login-header">
+      <div class="login-logo">📚</div>
+      <div class="login-appname">ReadLog</div>
+      <div class="login-tagline">Your personal book tracking companion</div>
+    </div>
+
+    <!-- TABS -->
+    <div class="login-tabs">
+      <button class="login-tab active" id="signinTab" onclick="switchTab('signin')">Sign in</button>
+      <button class="login-tab" id="registerTab" onclick="switchTab('register')">Create account</button>
+    </div>
+
+    <!-- SIGN IN FORM -->
+    <div class="login-body" id="signinForm">
+
+      <div class="field-group">
+        <label class="field-label">Email address</label>
+        <div class="field-wrap">
+          <span class="field-icon">📧</span>
+          <input type="email" id="signinEmail" placeholder="you@example.com" />
+        </div>
+        <div class="field-error" id="signinEmailErr"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Password</label>
+        <div class="field-wrap">
+          <span class="field-icon">🔒</span>
+          <input type="password" id="signinPassword" placeholder="Enter your password" />
+          <button class="toggle-password" onclick="togglePassword('signinPassword', this)">👁</button>
+        </div>
+        <div class="field-error" id="signinPasswordErr"></div>
+        <div class="forgot-link">
+          <a href="#" onclick="showForgot()">Forgot password?</a>
+        </div>
+      </div>
+
+      <div class="error-banner" id="signinBanner" style="display:none;"></div>
+      <div class="success-banner" id="signinSuccess" style="display:none;"></div>
+
+      <button class="submit-btn" onclick="handleSignin()">
+        <span id="signinBtnText">Sign in to ReadLog</span>
+        <span id="signinSpinner" class="spinner" style="display:none;"></span>
+      </button>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <div class="divider-text">or</div>
+        <div class="divider-line"></div>
+      </div>
+
+      <div class="footer-text">
+        Don't have an account?
+        <a href="#" onclick="switchTab('register')">Create one free</a>
+      </div>
+
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div class="login-body" id="registerForm" style="display:none;">
+
+      <div class="field-group">
+        <label class="field-label">Full name</label>
+        <div class="field-wrap">
+          <span class="field-icon">👤</span>
+          <input type="text" id="regName" placeholder="Your full name" />
+        </div>
+        <div class="field-error" id="regNameErr"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Email address</label>
+        <div class="field-wrap">
+          <span class="field-icon">📧</span>
+          <input type="email" id="regEmail" placeholder="you@example.com" />
+        </div>
+        <div class="field-error" id="regEmailErr"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Password</label>
+        <div class="field-wrap">
+          <span class="field-icon">🔒</span>
+          <input type="password" id="regPassword" placeholder="Create a password"
+            oninput="checkStrength(this.value)" />
+          <button class="toggle-password" onclick="togglePassword('regPassword', this)">👁</button>
+        </div>
+        <div class="strength-bar">
+          <div class="strength-seg" id="seg1"></div>
+          <div class="strength-seg" id="seg2"></div>
+          <div class="strength-seg" id="seg3"></div>
+          <div class="strength-seg" id="seg4"></div>
+        </div>
+        <div class="strength-label" id="strengthLabel"></div>
+        <div class="field-error" id="regPasswordErr"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Confirm password</label>
+        <div class="field-wrap">
+          <span class="field-icon">🔒</span>
+          <input type="password" id="regConfirm" placeholder="Repeat your password" />
+          <button class="toggle-password" onclick="togglePassword('regConfirm', this)">👁</button>
+        </div>
+        <div class="field-error" id="regConfirmErr"></div>
+      </div>
+
+      <div class="error-banner"   id="registerBanner"  style="display:none;"></div>
+      <div class="success-banner" id="registerSuccess" style="display:none;"></div>
+
+      <button class="submit-btn" onclick="handleRegister()">
+        <span id="registerBtnText">Create my account</span>
+        <span id="registerSpinner" class="spinner" style="display:none;"></span>
+      </button>
+
+      <div class="terms-text">
+        By creating an account you agree to our
+        <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+      </div>
+
+      <div class="footer-text">
+        Already have an account?
+        <a href="#" onclick="switchTab('signin')">Sign in</a>
+      </div>
+
+    </div>
+
+    <!-- FORGOT PASSWORD FORM -->
+    <div class="login-body" id="forgotForm" style="display:none;">
+
+      <div class="back-link">
+        <a href="#" onclick="switchTab('signin')">← Back to sign in</a>
+      </div>
+
+      <div class="forgot-title">Reset your password</div>
+      <div class="forgot-desc">
+        Enter your email and we'll send you a link to reset your password.
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Email address</label>
+        <div class="field-wrap">
+          <span class="field-icon">📧</span>
+          <input type="email" id="forgotEmail" placeholder="you@example.com" />
+        </div>
+        <div class="field-error" id="forgotEmailErr"></div>
+      </div>
+
+      <div class="success-banner" id="forgotSuccess" style="display:none;"></div>
+
+      <button class="submit-btn" onclick="handleForgot()">
+        <span id="forgotBtnText">Send reset link</span>
+        <span id="forgotSpinner" class="spinner" style="display:none;"></span>
+      </button>
+
+    </div>
+
+  </div>
+
+  <script src="login.js"></script>
+
+</body>
+</html>
