@@ -3,7 +3,7 @@
 // ==============================
 
 // Change this to your Render.com URL when deployed
-const API_URL = 'http://localhost:8081';
+const API_URL = 'https://readlog-backend-8hq4.onrender.com';
 
 
 // ==============================
