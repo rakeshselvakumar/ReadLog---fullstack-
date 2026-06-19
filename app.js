@@ -967,4 +967,16 @@ function logout() {
   window.location.href = 'login.html';
 }
 
+window.saveBook = saveBook;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.toggleDarkMode = toggleDarkMode;
+window.fetchCover = fetchCover;
+window.handleCoverUpload = handleCoverUpload;
+window.removeCover = removeCover;
+window.filterBooks = filterBooks;
+window.renderBooks = renderBooks;
+window.editGoal = editGoal;
+window.logout = logout;
+
 initApp();
