@@ -1,5 +1,6 @@
-
+// ==============================
 // API CONFIG
+// ==============================
 
 const API_URL = 'https://readlog-backend-8hq4.onrender.com';
 
@@ -18,7 +19,11 @@ function checkAuth() {
 // Call checkAuth when page loads
 checkAuth();
 
-let books = JSON.parse(localStorage.getItem('books')) || [];
+// ==============================
+// DATA & STATE
+// ==============================
+
+let books = [];
 let readingGoal = parseInt(localStorage.getItem('readingGoal')) || 20;
 let currentFilter = 'all';
 let editingId = null;
@@ -51,13 +56,6 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 }
 
 
-
-// DATA & STATE
-
-function saveBooks() {
-  localStorage.setItem('books', JSON.stringify(books));
-}
-
 // DARK MODE
 
 const savedTheme = localStorage.getItem('theme') || 'light';
@@ -71,8 +69,6 @@ function toggleDarkMode() {
 }
 
 // POPULATE YEAR DROPDOWN
-// Fills the year dropdown from 1990 to current year
-
 function populateYearDropdown() {
   const select   = document.getElementById('readYear');
   const thisYear = new Date().getFullYear();
@@ -86,15 +82,14 @@ populateYearDropdown();
 
 
 // READING GOAL
-// Now uses "dateRead" (when user actually read it) instead of "dateAdded"
 
 function updateGoal() {
   const thisYear = new Date().getFullYear();
 
   const readThisYear = books.filter(b =>
     (b.status === 'read' || b.status === 'favourite') &&
-    b.dateRead &&                                      // must have a dateRead set
-    new Date(b.dateRead).getFullYear() === thisYear    // and it must be this year
+    b.dateRead &&
+    new Date(b.dateRead).getFullYear() === thisYear
   ).length;
 
   const percent = readingGoal > 0
@@ -134,10 +129,9 @@ function openModal(id = null) {
     document.getElementById('bookNotes').value         = book.notes       || '';
     document.getElementById('bookCover').value         = book.cover       || '';
 
-    // Fill date read dropdowns if this book has a dateRead saved
     if (book.dateRead) {
       const d = new Date(book.dateRead);
-      document.getElementById('readMonth').value = d.getMonth() + 1; // months are 0-indexed
+      document.getElementById('readMonth').value = d.getMonth() + 1;
       document.getElementById('readYear').value  = d.getFullYear();
     } else {
       document.getElementById('readMonth').value = '';
@@ -235,16 +229,13 @@ async function fetchCover() {
 function handleCoverUpload(event) {
   const file = event.target.files[0];
 
-  // Check if user actually selected a file
   if (!file) return;
 
-  // Only allow image files
   if (!file.type.startsWith('image/')) {
     alert('Please select an image file!');
     return;
   }
 
-  // Check file size — limit to 2MB to keep localStorage happy
   if (file.size > 2 * 1024 * 1024) {
     alert('Image is too large! Please use an image under 2MB.');
     return;
@@ -252,17 +243,12 @@ function handleCoverUpload(event) {
 
   document.getElementById('coverStatus').textContent = 'Loading...';
 
-  // FileReader converts the image to a base64 string
-  // Base64 = image stored as text — can be saved in localStorage
   const reader = new FileReader();
 
   reader.onload = function(e) {
-    const base64Image = e.target.result; // looks like "data:image/jpeg;base64,..."
+    const base64Image = e.target.result;
 
-    // Save to hidden input
     document.getElementById('bookCover').value = base64Image;
-
-    // Show preview
     document.getElementById('coverPreview').src           = base64Image;
     document.getElementById('coverPreview').style.display = 'block';
     document.getElementById('removeCoverBtn').style.display = 'block';
@@ -273,7 +259,6 @@ function handleCoverUpload(event) {
     document.getElementById('coverStatus').textContent = '❌ Failed to load image';
   };
 
-  // This triggers the onload above
   reader.readAsDataURL(file);
 }
 
@@ -285,48 +270,119 @@ function removeCover() {
   document.getElementById('coverPreview').style.display = 'none';
   document.getElementById('removeCoverBtn').style.display = 'none';
   document.getElementById('coverStatus').textContent    = '';
-  document.getElementById('coverUpload').value          = ''; // reset file input
+  document.getElementById('coverUpload').value          = '';
 }
 
 
-// SAVE BOOK (ADD OR EDIT)
+// ==============================
+// SAVE BOOK (ADD OR EDIT) — calls backend API
+// ==============================
 
-async function saveBooks(bookData) {
-  if (editingId !== null) {
-    await apiRequest(`/api/books/${editingId}`, 'PUT', bookData);
-  } else {
-    await apiRequest('/api/books', 'POST', bookData);
+async function saveBook() {
+  const title  = document.getElementById('bookTitle').value.trim();
+  const author = document.getElementById('bookAuthor').value.trim();
+  const genre  = document.getElementById('bookGenre').value.trim();
+  const status = document.getElementById('bookStatus').value;
+  const notes  = document.getElementById('bookNotes').value.trim();
+  const cover  = document.getElementById('bookCover').value;
+
+  if (!title) {
+    alert('Please enter the book title!');
+    return;
+  }
+
+  let dateRead = null;
+  if (status === 'read' || status === 'favourite') {
+    const month = document.getElementById('readMonth').value;
+    const year  = document.getElementById('readYear').value;
+    if (month && year) {
+      dateRead = `${year}-${String(month).padStart(2, '0')}`;
+    }
+  }
+
+  const bookData = {
+    title, author, genre, status, notes, cover, dateRead,
+    rating:      parseInt(document.getElementById('bookRating').value) || 0,
+    currentPage: parseInt(document.getElementById('currentPage').value) || 0,
+    totalPages:  parseInt(document.getElementById('totalPages').value)  || 0,
+  };
+
+  try {
+    if (editingId !== null) {
+      await apiRequest(`/api/books/${editingId}`, 'PUT', bookData);
+    } else {
+      await apiRequest('/api/books', 'POST', bookData);
+    }
+
+    await loadBooksFromAPI();
+    closeModal();
+
+  } catch (err) {
+    alert('Failed to save book. Please try again.');
   }
 }
 
 
-// DELETE BOOK
+// ==============================
+// DELETE BOOK — calls backend API
+// ==============================
 
-function deleteBook(id) {
+async function deleteBook(id) {
   if (!confirm('Delete this book?')) return;
-  books = books.filter(b => b.id !== id);
-  saveBooks();
-  renderBooks();
+
+  try {
+    await apiRequest(`/api/books/${id}`, 'DELETE');
+    await loadBooksFromAPI();
+  } catch (err) {
+    alert('Failed to delete book.');
+  }
 }
 
 
-// TOGGLE FAVOURITE
-function toggleFavourite(id) {
+// ==============================
+// TOGGLE FAVOURITE — calls backend API
+// ==============================
+
+async function toggleFavourite(id) {
   const book = books.find(b => b.id === id);
   if (!book) return;
 
-  // If already favourite, go back to "read". Otherwise make it favourite.
-  if (book.status === 'favourite') {
-    book.status = 'read';
-  } else {
-    // Save previous status so we can restore it if un-favourited
+  const newStatus = book.status === 'favourite'
+    ? (book.previousStatus || 'read')
+    : 'favourite';
+
+  if (book.status !== 'favourite') {
     book.previousStatus = book.status;
-    book.status = 'favourite';
   }
 
-  saveBooks();
-  renderBooks();
+  const bookData = {
+    title:       book.title,
+    author:      book.author,
+    genre:       book.genre,
+    status:      newStatus,
+    notes:       book.notes,
+    cover:       book.cover,
+    rating:      book.rating,
+    currentPage: book.currentPage,
+    totalPages:  book.totalPages,
+    dateRead:    book.dateRead ? toMonthYearString(book.dateRead) : null,
+  };
+
+  try {
+    await apiRequest(`/api/books/${id}`, 'PUT', bookData);
+    await loadBooksFromAPI();
+  } catch (err) {
+    alert('Failed to update favourite status.');
+  }
 }
+
+// Helper — convert a date string/object to "YYYY-MM" for the backend
+function toMonthYearString(dateValue) {
+  const d = new Date(dateValue);
+  if (isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 
 // ==============================
 // RECOMMENDATIONS
@@ -335,7 +391,6 @@ function toggleFavourite(id) {
 async function renderRecommendations() {
   const page = document.getElementById('recommendPage');
 
-  // Need at least 2 books to make recommendations
   if (books.length < 2) {
     page.innerHTML = `
       <div class="rec-empty">
@@ -345,16 +400,12 @@ async function renderRecommendations() {
     return;
   }
 
-  // Show loading state
   page.innerHTML = `
     <div class="rec-loading">
       <div class="spinner"></div>
       Analysing your reading taste...
     </div>`;
 
-  // ---- ANALYSE USER TASTE ----
-
-  // Count genres
   const genreCount = {};
   books.forEach(b => {
     if (b.genre) {
@@ -363,7 +414,6 @@ async function renderRecommendations() {
     }
   });
 
-  // Count authors
   const authorCount = {};
   books.forEach(b => {
     if (b.author) {
@@ -372,42 +422,30 @@ async function renderRecommendations() {
     }
   });
 
-  // Get top 3 genres sorted by count
   const topGenres = Object.entries(genreCount)
     .sort((a,b) => b[1] - a[1])
     .slice(0, 3)
     .map(([genre]) => genre);
 
-  // Get top 3 authors
   const topAuthors = Object.entries(authorCount)
     .sort((a,b) => b[1] - a[1])
     .slice(0, 3)
     .map(([author]) => author);
 
-  // Get top rated books (4 stars and above)
   const topRated = books
     .filter(b => b.rating >= 4)
     .sort((a,b) => b.rating - a.rating)
     .slice(0, 3);
 
-  // Titles already in library (to avoid recommending them)
   const existingTitles = new Set(
     books.map(b => b.title.toLowerCase().trim())
   );
 
-  // ---- FETCH RECOMMENDATIONS ----
-
-  // Fetch genre recommendations
   const genreResults  = await fetchRecommendations('genre',  topGenres,   existingTitles);
-
-  // Fetch author recommendations
   const authorResults = await fetchRecommendations('author', topAuthors,  existingTitles);
-
-  // Fetch based on top rated book titles (similar books)
   const ratedTitles   = topRated.map(b => b.title);
   const ratingResults = await fetchRecommendations('title',  ratedTitles, existingTitles);
 
-  // ---- RESTORE PAGE STRUCTURE ----
   page.innerHTML = `
     <div class="taste-card">
       <div class="taste-title">📊 Your Reading Taste</div>
@@ -426,34 +464,28 @@ async function renderRecommendations() {
       <div class="rec-grid" id="recRatingGrid"></div>
     </div>`;
 
-  // ---- RENDER TASTE TAGS ----
   const tasteRow = document.getElementById('tasteRow');
 
-  // Show top genres as tags
   topGenres.forEach(g => {
     tasteRow.innerHTML += `<span class="taste-tag">📖 ${capitalise(g)}</span>`;
   });
 
-  // Show top authors as tags
   topAuthors.slice(0,2).forEach(a => {
     tasteRow.innerHTML += `<span class="taste-tag">✍️ ${capitalise(a)}</span>`;
   });
 
-  // Show avg rating
   const ratedBooks = books.filter(b => b.rating);
   if (ratedBooks.length) {
     const avg = (ratedBooks.reduce((s,b) => s + b.rating, 0) / ratedBooks.length).toFixed(1);
     tasteRow.innerHTML += `<span class="taste-tag">⭐ Avg rating: ${avg}</span>`;
   }
 
-  // ---- RENDER RECOMMENDATION GRIDS ----
   renderRecGrid('recGenreGrid',  genreResults);
   renderRecGrid('recAuthorGrid', authorResults);
   renderRecGrid('recRatingGrid', ratingResults);
 }
 
 
-// Fetch books from Open Library API based on query type
 async function fetchRecommendations(type, queries, existingTitles) {
   const results = [];
 
@@ -478,10 +510,7 @@ async function fetchRecommendations(type, queries, existingTitles) {
         data.docs.forEach(doc => {
           const title = doc.title || '';
 
-          // Skip if already in user's library
           if (existingTitles.has(title.toLowerCase().trim())) return;
-
-          // Skip duplicates within results
           if (results.find(r => r.title.toLowerCase() === title.toLowerCase())) return;
 
           results.push({
@@ -498,7 +527,6 @@ async function fetchRecommendations(type, queries, existingTitles) {
       console.error('Recommendation fetch error:', err);
     }
 
-    // Stop once we have 10 results for this section
     if (results.length >= 10) break;
   }
 
@@ -506,7 +534,6 @@ async function fetchRecommendations(type, queries, existingTitles) {
 }
 
 
-// Render a row of recommendation cards
 function renderRecGrid(containerId, books) {
   const grid = document.getElementById(containerId);
 
@@ -535,9 +562,8 @@ function renderRecGrid(containerId, books) {
 }
 
 
-// Add recommended book directly to Want to Read list
-function addToWantToRead(book) {
-  // Check if already in library
+// Add recommended book directly to Want to Read list — via backend API
+async function addToWantToRead(book) {
   const exists = books.find(b =>
     b.title.toLowerCase().trim() === book.title.toLowerCase().trim()
   );
@@ -547,21 +573,26 @@ function addToWantToRead(book) {
     return;
   }
 
-  books.push({
-    id:        Date.now(),
-    title:     book.title,
-    author:    book.author,
-    genre:     '',
-    status:    'want',
-    cover:     book.cover || '',
-    notes:     '',
-    rating:    0,
-    dateRead:  null,
-    dateAdded: new Date().toISOString(),
-  });
+  const bookData = {
+    title:  book.title,
+    author: book.author,
+    genre:  '',
+    status: 'want',
+    cover:  book.cover || '',
+    notes:  '',
+    rating: 0,
+    currentPage: 0,
+    totalPages:  0,
+    dateRead: null,
+  };
 
-  saveBooks();
-  alert(`✅ "${book.title}" added to your Want to Read list!`);
+  try {
+    await apiRequest('/api/books', 'POST', bookData);
+    await loadBooksFromAPI();
+    alert(`✅ "${book.title}" added to your Want to Read list!`);
+  } catch (err) {
+    alert('Failed to add book.');
+  }
 }
 
 
@@ -701,7 +732,6 @@ function buildBookCard(book) {
   const notesHtml = book.notes
     ? `<div class="book-notes">"${book.notes}"</div>` : '';
 
-  // Show "Completed: June 2024" if dateRead is set, otherwise show "Added X ago"
   let dateHtml = '';
   if ((book.status === 'read' || book.status === 'favourite') && book.dateRead) {
     const d         = new Date(book.dateRead);
@@ -884,9 +914,11 @@ function exportPDF() {
   win.print();
 }
 
+
+// ==============================
 // START THE APP
-// START THE APP
-currentFilter = 'all';
+// ==============================
+
 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
 document.querySelector('.tab').classList.add('active');
 
@@ -916,10 +948,14 @@ async function loadBooksFromAPI() {
         dateRead:    b.dateRead,
         dateAdded:   b.dateAdded,
       }));
-      renderBooks();
+    } else {
+      books = [];
     }
+    renderBooks();
   } catch (err) {
     console.error('Failed to load books:', err);
+    books = [];
+    renderBooks();
   }
 }
 
